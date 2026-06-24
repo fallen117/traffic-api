@@ -1,0 +1,56 @@
+<mat-card class="chat-card">
+  <mat-card-header class="card-header">
+    <mat-card-title>
+      <mat-icon class="title-icon">traffic</mat-icon>
+      QuillaTraffic
+    </mat-card-title>
+    <mat-card-subtitle>Tráfico en Barranquilla con IA</mat-card-subtitle>
+  </mat-card-header>
+
+  <div class="chat-messages" #chatList>
+    @if (messages().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">map</mat-icon>
+        <p class="empty-text">Pregunta por el tráfico en Barranquilla</p>
+        <p class="empty-hint">Ej: "¿Cómo está la Vía 40?"</p>
+      </div>
+    }
+
+    @for (msg of messages(); track $index) {
+      <div class="msg-row" [class.user]="msg.role === 'user'" [class.bot]="msg.role === 'assistant'">
+        <div class="bubble">
+          <p class="msg-text">{{ msg.content }}</p>
+          <span class="msg-time">{{ msg.timestamp | date:'HH:mm' }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (isLoading()) {
+    <mat-progress-bar mode="indeterminate" class="loading-bar" />
+  }
+
+  <mat-divider class="divider" />
+
+  <div class="input-area">
+    <div class="apple-input-wrapper">
+      <textarea
+        #inputTextarea
+        class="apple-textarea"
+        [(ngModel)]="inputText"
+        (input)="onInput()"
+        (keydown)="onKeydown($event)"
+        [disabled]="isLoading()"
+        placeholder="Pregunta sobre el tráfico..."
+        rows="1"
+      ></textarea>
+      <button
+        class="send-btn-inline"
+        (click)="send()"
+        [disabled]="isLoading() || !inputText.trim()"
+      >
+        <mat-icon class="send-icon">send</mat-icon>
+      </button>
+    </div>
+  </div>
+</mat-card>

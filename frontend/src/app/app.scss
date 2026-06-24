@@ -1,0 +1,46 @@
+:host {
+  display: block;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.sidebar {
+  width: 50%;
+  min-width: 340px;
+  max-width: 600px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(154, 180, 204, 0.45);
+  z-index: 1;
+}
+
+.map-area {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: unset;
+    max-width: unset;
+    height: 50dvh;
+    border-right: none;
+    border-top: 1px solid rgba(154, 180, 204, 0.45);
+    order: 2;
+  }
+
+  .map-area {
+    height: 50dvh;
+    order: 1;
+  }
+}

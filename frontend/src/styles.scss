@@ -1,0 +1,54 @@
+@use '@angular/material' as mat;
+
+$theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$cyan-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    plain-family: 'FreeSans, "Nunito Sans", Inter, sans-serif',
+    brand-family: 'FreeSans, "Nunito Sans", Inter, sans-serif',
+    bold-weight: 700,
+  ),
+  density: (
+    scale: 0,
+  ),
+));
+
+html {
+  @include mat.all-component-themes($theme);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+:root {
+  --deep-slate: #1e2a38;
+  --steel-blue: #4a6a8a;
+  --powder-blue: #9ab4cc;
+  --ice: #eef2f6;
+  --cyan-accent: #33ccff;
+  --text-primary: #1e2a38;
+  --text-secondary: #4a6a8a;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--powder-blue);
+  border-radius: 3px;
+}

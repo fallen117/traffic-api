@@ -1,0 +1,40 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+yarn-old.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build output
+/dist
+/frontend/dist
+/backend/dist
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Angular
+/angular/cache
+.sass-cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
