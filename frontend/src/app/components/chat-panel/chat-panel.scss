@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--ice);
+  background: var(--surface-card);
+  transition: background 0.25s;
 }
 
 .chat-card {
@@ -11,37 +12,72 @@
   height: 100%;
   border-radius: 0;
   box-shadow: none;
-  background: var(--ice);
+  background: var(--surface-card);
+  transition: background 0.25s;
 }
 
 .card-header {
-  padding: 20px 20px 12px;
+  padding: 20px 22px 14px;
   flex-shrink: 0;
-  background: var(--deep-slate);
+  background: var(--header-gradient);
   color: white;
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-direction: column;
 }
+
 
 .card-header ::ng-deep .mat-mdc-card-title {
   font-family: 'FreeSans', 'Nunito Sans', 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1.4rem;
+  letter-spacing: -0.3px;
   color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.card-header ::ng-deep .mat-mdc-card-subtitle {
+.header-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.card-header ::ng-deep .header-bottom .mat-mdc-card-subtitle {
   font-family: 'FreeSans', 'Nunito Sans', 'Inter', sans-serif;
   font-weight: 400;
-  font-size: 0.85rem;
-  color: var(--powder-blue);
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .title-icon {
-  vertical-align: middle;
-  margin-right: 8px;
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
+  font-size: 22px;
   color: var(--cyan-accent);
+  filter: drop-shadow(0 0 6px rgba(51, 204, 255, 0.4));
 }
 
 .chat-messages {
@@ -51,7 +87,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: white;
+  background: var(--surface-messages);
+  transition: background 0.25s;
 }
 
 .empty-state {
@@ -75,14 +112,14 @@
 .empty-text {
   font-size: 16px;
   font-weight: 600;
-  color: var(--deep-slate);
+  color: var(--text-primary);
   margin: 0 0 8px;
   font-family: 'FreeSans', 'Nunito Sans', 'Inter', sans-serif;
 }
 
 .empty-hint {
   font-size: 13px;
-  color: var(--steel-blue);
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -115,10 +152,10 @@
 }
 
 .bot .bubble {
-  background: var(--ice);
-  color: var(--deep-slate);
+  background: var(--bot-bubble-bg);
+  color: var(--text-primary);
   border-bottom-left-radius: 4px;
-  border: 1px solid var(--powder-blue);
+  border: 1px solid var(--bot-bubble-border);
 }
 
 .msg-text {
@@ -133,7 +170,7 @@
   opacity: 0.65;
   text-align: right;
   margin-top: 6px;
-  color: var(--deep-slate);
+  color: var(--text-primary);
 }
 
 .loading-bar {
@@ -146,31 +183,32 @@
 
 .divider {
   flex-shrink: 0;
-  border-color: rgba(154, 180, 204, 0.45) !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .input-area {
   padding: 10px 16px 14px;
   flex-shrink: 0;
-  background: var(--ice);
-  border-top: 1px solid rgba(154, 180, 204, 0.45);
+  background: var(--surface-input);
+  border-top: 1px solid var(--border-subtle);
+  transition: background 0.25s;
 }
 
 .apple-input-wrapper {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  background: #f2f2f7;
-  border: 1px solid rgba(154, 180, 204, 0.35);
+  background: var(--surface-input-wrapper);
+  border: 1px solid var(--border-input);
   border-radius: 22px;
   padding: 6px 6px 6px 18px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .apple-input-wrapper:focus-within {
   border-color: var(--steel-blue);
-  box-shadow: 0 0 0 3px rgba(74, 106, 138, 0.12);
-  background: white;
+  box-shadow: 0 0 0 3px rgba(51, 204, 255, 0.15);
+  background: var(--surface-input-wrapper-focus);
 }
 
 .apple-textarea {
@@ -182,7 +220,7 @@
   font-family: 'FreeSans', 'Nunito Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  color: var(--deep-slate);
+  color: var(--text-primary);
   caret-color: var(--cyan-accent);
   max-height: 160px;
   overflow-y: auto;
@@ -190,7 +228,7 @@
 }
 
 .apple-textarea::placeholder {
-  color: var(--steel-blue);
+  color: var(--text-secondary);
   opacity: 0.6;
 }
 

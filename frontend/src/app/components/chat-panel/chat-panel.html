@@ -1,10 +1,15 @@
 <mat-card class="chat-card">
   <mat-card-header class="card-header">
     <mat-card-title>
-      <mat-icon class="title-icon">traffic</mat-icon>
+      <i class="fa-solid fa-traffic-light title-icon"></i>
       QuillaTraffic
     </mat-card-title>
-    <mat-card-subtitle>Tráfico en Barranquilla con IA</mat-card-subtitle>
+    <div class="header-bottom">
+      <mat-card-subtitle>Tráfico en Barranquilla con IA</mat-card-subtitle>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Modo claro' : 'Modo oscuro'">
+        <i class="fa-solid" [class.fa-moon]="!isDarkMode()" [class.fa-sun]="isDarkMode()"></i>
+      </button>
+    </div>
   </mat-card-header>
 
   <div class="chat-messages" #chatList>

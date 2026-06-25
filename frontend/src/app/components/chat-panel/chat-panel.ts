@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { ChatService } from '../../services/chat.service';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-chat-panel',
@@ -23,10 +24,17 @@ import { ChatService } from '../../services/chat.service';
 })
 export class ChatPanel {
   private chatService = inject(ChatService);
+  private themeService = inject(ThemeService);
 
   messages = this.chatService.messages;
   isLoading = this.chatService.isLoading;
   inputText = '';
+
+  isDarkMode = this.themeService.isDarkMode;
+
+  toggleTheme(): void {
+    this.themeService.toggle();
+  }
 
   private chatListRef = viewChild<ElementRef<HTMLDivElement>>('chatList');
   private textareaEl = viewChild<ElementRef<HTMLTextAreaElement>>('inputTextarea');
