@@ -4,6 +4,9 @@
   "description": "Backend agente IA para QuillaTráfico - Consultas de tráfico en Barranquilla",
   "type": "module",
   "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"

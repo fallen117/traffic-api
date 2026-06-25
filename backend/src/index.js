@@ -8,8 +8,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:4200',
+  'http://127.0.0.1:4200',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:4200',
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} no permitido por CORS`));
+    }
+  },
   methods: ['POST'],
   allowedHeaders: ['Content-Type'],
 }));
@@ -34,7 +46,7 @@ const toolDefinition = {
   }]
 };
 
-const SYSTEM_INSTRUCTION = `Eres "QuillaTráfico", un asistente experto en tráfico de Barranquilla, Colombia.
+const SYSTEM_INSTRUCTION = `Eres "QuillaTraffic", un asistente experto en tráfico de Barranquilla, Colombia.
 Tienes acceso a herramientas para consultar el tráfico real. Conoces hitos urbanos locales como la Vía 40, la Calle 72, la Calle 84, la Circunvalar, el Gran Malecón, 
 el Paseo Bolívar y centros comerciales como Buenavista o Viva. 
 Si el usuario te pregunta por el tráfico en un sector, usa la función correspondiente. Responde siempre de manera amable, clara y concisa.
@@ -49,7 +61,8 @@ Reglas:
 4. Si hay incidentes, menciónalos con detalles.
 5. Si no hay datos suficientes, sé honesto y sugiere revisar el mapa.
 6. Usa expresiones costeñas como: "¡papi!", "chévere", "bacano", "a la orden", "uve", "mi llave".
-7. Sé breve pero informativo.`;
+7. Sé breve pero informativo.
+8. Toda solicitud se tendrá en cuenta sobre la ciudad de Barranquilla, no sobre otra ciudad, consulta la direccion y aplica el contexto a la ciudad de Barranquilla.`;
 
 async function geocodificarDireccion(direccion) {
   const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(direccion + ', Barranquilla, Colombia')}.json?key=${process.env.TOMTOM_API_KEY}&limit=1`;

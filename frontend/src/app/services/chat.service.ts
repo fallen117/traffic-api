@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, isDevMode } from '@angular/core';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -13,7 +13,9 @@ export interface Coordenadas {
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-  private apiUrl = 'http://localhost:3001/api/chat';
+  private apiUrl = isDevMode()
+    ? 'http://localhost:3001/api/chat'
+    : '/api/chat';
 
   messages = signal<ChatMessage[]>([]);
   isLoading = signal(false);
@@ -68,7 +70,9 @@ export class ChatService {
         ...msgs,
         {
           role: 'assistant',
-          content: 'Error al conectar con el servidor. Asegúrate de que el backend esté corriendo en http://localhost:3001.',
+          content: isDevMode()
+            ? 'Error al conectar con el servidor. Asegúrate de que el backend esté corriendo en http://localhost:3001.'
+            : 'Error al conectar con el servidor. Intenta de nuevo más tarde.',
           timestamp: new Date(),
         },
       ]);
