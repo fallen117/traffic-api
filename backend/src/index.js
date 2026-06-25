@@ -67,6 +67,10 @@ Reglas:
 async function geocodificarDireccion(direccion) {
   const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(direccion + ', Barranquilla, Colombia')}.json?key=${process.env.TOMTOM_API_KEY}&limit=1`;
   const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`TomTom Geocoding error ${res.status}: ${text.slice(0, 200)}`);
+  }
   const data = await res.json();
   if (!data.results?.length) return null;
   return data.results[0].position;
@@ -75,6 +79,10 @@ async function geocodificarDireccion(direccion) {
 async function consultarFlujoTrafico(lat, lon) {
   const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/relative/10/json?key=${process.env.TOMTOM_API_KEY}&point=${lat},${lon}&unit=km/h&thickness=1`;
   const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`TomTom Traffic Flow error ${res.status}: ${text.slice(0, 200)}`);
+  }
   return res.json();
 }
 
@@ -82,43 +90,56 @@ async function consultarIncidentes(lat, lon) {
   const bbox = `${lon - 0.02},${lat - 0.02},${lon + 0.02},${lat + 0.02}`;
   const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?key=${process.env.TOMTOM_API_KEY}&bbox=${bbox}&language=es-ES&timeValidityFilter=present`;
   const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`TomTom Incidents error ${res.status}: ${text.slice(0, 200)}`);
+  }
   return res.json();
 }
 
 async function ejecutarConsultarTrafico(direccion_o_zona) {
-  const posicion = await geocodificarDireccion(direccion_o_zona);
-  if (!posicion) {
-    return { error: `No se encontró "${direccion_o_zona}" en Barranquilla. ¿Puedes ser más específico?` };
+  try {
+    const posicion = await geocodificarDireccion(direccion_o_zona);
+    if (!posicion) {
+      return { error: `No se encontró "${direccion_o_zona}" en Barranquilla. ¿Puedes ser más específico?` };
+    }
+
+    const [trafico, incidentes] = await Promise.all([
+      consultarFlujoTrafico(posicion.lat, posicion.lon),
+      consultarIncidentes(posicion.lat, posicion.lon),
+    ]);
+
+    return {
+      direccion_consultada: direccion_o_zona,
+      coordenadas: { lat: posicion.lat, lon: posicion.lon },
+      trafico,
+      incidentes,
+    };
+  } catch (err) {
+    console.error('Error en ejecutarConsultarTrafico:', err);
+    return { error: `Error al consultar datos de tráfico para "${direccion_o_zona}": ${err.message}` };
   }
-
-  const [trafico, incidentes] = await Promise.all([
-    consultarFlujoTrafico(posicion.lat, posicion.lon),
-    consultarIncidentes(posicion.lat, posicion.lon),
-  ]);
-
-  return {
-    direccion_consultada: direccion_o_zona,
-    coordenadas: { lat: posicion.lat, lon: posicion.lon },
-    trafico,
-    incidentes,
-  };
 }
 
 app.post('/api/chat', async (req, res) => {
+  const { message, history = [] } = req.body;
+  if (!message?.trim()) {
+    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
+  }
+
+  const normalizeRole = (r) => r === 'assistant' ? 'model' : r;
+
+  const contents = [
+    ...history.map(m => ({ ...m, role: normalizeRole(m.role) })),
+    { role: 'user', parts: [{ text: message }] },
+  ];
+
+  let ultimasCoordenadas = null;
+
+  // --- Primera llamada a Gemini ---
+  let response;
   try {
-    const { message, history = [] } = req.body;
-    if (!message?.trim()) {
-      return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
-    }
-
-    const normalizeRole = (r) => r === 'assistant' ? 'model' : r;
-
-    const contents = [
-      ...history.map(m => ({ ...m, role: normalizeRole(m.role) })),
-      { role: 'user', parts: [{ text: message }] },
-    ];
-
-    let response = await ai.models.generateContent({
+    response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents,
       config: {
@@ -126,36 +147,44 @@ app.post('/api/chat', async (req, res) => {
         tools: [toolDefinition],
       },
     });
+  } catch (err) {
+    console.error('Error llamando a Gemini (inicial):', err);
+    return res.status(502).json({ error: `Error de conexión con Gemini: ${err.message}` });
+  }
 
-    let candidate = response.candidates?.[0];
-    if (!candidate) {
-      return res.status(500).json({ error: 'No se pudo generar respuesta del modelo.' });
+  let candidate = response.candidates?.[0];
+  if (!candidate?.content) {
+    const reason = response.promptFeedback?.blockReason
+      || 'el modelo no generó contenido (safety block o respuesta vacía)';
+    return res.status(500).json({ error: `Gemini no devolvió contenido: ${reason}` });
+  }
+
+  // --- Bucle de function calling ---
+  let maxTurns = 5;
+  while (maxTurns-- > 0) {
+    const parts = candidate.content.parts;
+    if (!parts?.length) break;
+
+    const functionCalls = parts.filter(p => p.functionCall);
+    if (functionCalls.length === 0) break;
+
+    contents.push({ role: 'model', parts: [...parts] });
+
+    for (const part of functionCalls) {
+      const fc = part.functionCall;
+      if (fc.name === 'consultarTraficoBarranquilla') {
+        const result = await ejecutarConsultarTrafico(fc.args.direccion_o_zona);
+        if (result.coordenadas) {
+          ultimasCoordenadas = result.coordenadas;
+        }
+        contents.push({
+          role: 'function',
+          parts: [{ functionResponse: { name: fc.name, response: result } }],
+        });
+      }
     }
 
-    let ultimasCoordenadas = null;
-
-    let maxTurns = 5;
-    while (maxTurns-- > 0) {
-      const parts = candidate.content.parts;
-      const functionCalls = parts.filter(p => p.functionCall);
-      if (functionCalls.length === 0) break;
-
-      contents.push({ role: 'model', parts: [...parts] });
-
-      for (const part of functionCalls) {
-        const fc = part.functionCall;
-        if (fc.name === 'consultarTraficoBarranquilla') {
-          const result = await ejecutarConsultarTrafico(fc.args.direccion_o_zona);
-          if (result.coordenadas) {
-            ultimasCoordenadas = result.coordenadas;
-          }
-          contents.push({
-            role: 'function',
-            parts: [{ functionResponse: { name: fc.name, response: result } }],
-          });
-        }
-      }
-
+    try {
       response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents,
@@ -163,21 +192,21 @@ app.post('/api/chat', async (req, res) => {
           tools: [toolDefinition],
         },
       });
-
-      candidate = response.candidates?.[0];
-      if (!candidate) break;
+    } catch (err) {
+      console.error('Error llamando a Gemini (function response):', err);
+      return res.status(502).json({ error: `Error de conexión con Gemini tras consultar tráfico: ${err.message}` });
     }
 
-    const texto = candidate.content.parts
-      .filter(p => p.text)
-      .map(p => p.text)
-      .join('');
-
-    res.json({ response: texto, coordenadas: ultimasCoordenadas });
-  } catch (error) {
-    console.error('Error en /api/chat:', error);
-    res.status(500).json({ error: 'Error interno al procesar la consulta.' });
+    candidate = response.candidates?.[0];
+    if (!candidate?.content) break;
   }
+
+  const texto = candidate?.content?.parts
+    ?.filter(p => p.text)
+    .map(p => p.text)
+    .join('') || '';
+
+  res.json({ response: texto, coordenadas: ultimasCoordenadas });
 });
 
 app.get('/api/health', (_req, res) => {
