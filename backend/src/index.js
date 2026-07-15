@@ -27,18 +27,28 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const METRO_BBOX = {
+  minLat: 10.80, maxLat: 11.10,
+  minLon: -74.96, maxLon: -74.64,
+};
+
+function estaEnAreaMetropolitana(lat, lon) {
+  return lat >= METRO_BBOX.minLat && lat <= METRO_BBOX.maxLat
+      && lon >= METRO_BBOX.minLon && lon <= METRO_BBOX.maxLon;
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const toolDefinition = {
   functionDeclarations: [{
     name: 'consultarTraficoBarranquilla',
-    description: 'Consulta el estado del tráfico en una dirección o zona específica de Barranquilla, Colombia. Convierte la dirección a coordenadas (geocoding) y obtiene el flujo de tráfico e incidentes actuales.',
+    description: 'Consulta el estado del tráfico en una dirección, barrio, intersección o zona específica de Barranquilla, Colombia. Convierte la dirección a coordenadas (geocoding) y obtiene el flujo de tráfico e incidentes actuales. Acepta formatos colombianos como "Carrera 46 #82-15", "Calle 84 con Cra 55", "Vía 40 con Calle 72", "Circunvalar con Cra 21", o lugares turísticos como "Gran Malecón", "Buenavista", "Centro Histórico".',
     parameters: {
       type: 'object',
       properties: {
         direccion_o_zona: {
           type: 'string',
-          description: 'Dirección, barrio, centro comercial o punto de referencia en Barranquilla, Colombia. Ej: "Centro Comercial Viva", "Calle 84 con Carrera 55", "Parque Washington", "Norte de Barranquilla"'
+          description: 'Dirección, barrio, intersección, centro comercial o punto de referencia en Barranquilla, Colombia. Acepta formatos colombianos: "Carrera 46 con Calle 82", "Cra 53 #74-25", "Vía 40", "Circunvalar con Cra 21", "Gran Malecón", "Buenavista", "Norte de Barranquilla"'
         }
       },
       required: ['direccion_o_zona']
@@ -46,26 +56,27 @@ const toolDefinition = {
   }]
 };
 
-const SYSTEM_INSTRUCTION = `Eres "QuillaTraffic", un asistente experto en tráfico de Barranquilla, Colombia.
+const SYSTEM_INSTRUCTION = `Eres "QuillaTraffic", un asistente experto en tráfico del área metropolitana de Barranquilla, Colombia (Barranquilla y Soledad).
 Tienes acceso a herramientas para consultar el tráfico real. Conoces hitos urbanos locales como la Vía 40, la Calle 72, la Calle 84, la Circunvalar, el Gran Malecón, 
-el Paseo Bolívar y centros comerciales como Buenavista o Viva. 
-Si el usuario te pregunta por el tráfico en un sector, usa la función correspondiente. Responde siempre de manera amable, clara y concisa.
+el Paseo Bolívar, centros comerciales como Buenavista o Viva, el municipio de Soledad, y todos los barrios de la ciudad.
+Responde siempre de manera amable, clara y concisa.
 
 Reglas:
 1. Respondes SIEMPRE en español, con un tono amable, local y costeño auténtico.
-2. Cuando te pregunten sobre el tráfico en una dirección o zona, usa la función \`consultarTraficoBarranquilla\`.
-3. Interpreta los datos que recibes:
-   - Velocidad actual vs velocidad libre (cuánto tráfico hay).
-   - Nivel de congestión (bajo, moderado, alto).
-   - Incidentes reportados (accidentes, obras, etc.).
-4. Si hay incidentes, menciónalos con detalles.
-5. Si no hay datos suficientes, sé honesto y sugiere revisar el mapa.
-6. Usa expresiones costeñas como: "¡papi!", "chévere", "bacano", "a la orden", "uve", "mi llave".
-7. Sé breve pero informativo.
-8. Toda solicitud se tendrá en cuenta sobre la ciudad de Barranquilla, no sobre otra ciudad, consulta la direccion y aplica el contexto a la ciudad de Barranquilla.`;
+2. **SIEMPRE debes llamar la función \`consultarTraficoBarranquilla\` cuando el usuario pregunte por tráfico, congestión, accidentes, vías, calles, carreras, avenidas, barrios o zonas de Barranquilla o Soledad. No intentes responder basándote en tu conocimiento interno — los datos deben venir de la herramienta.**
+3. Si el usuario da una dirección en formato colombiano como "Carrera 46 con Calle 82", "Cra 53 #74-25", "Calle 84 con Cra 55", pásala exactamente como el usuario la escribió a la función, sin agregar "Barranquilla" ni "Soledad" al texto.
+4. **Todas las consultas son sobre el área metropolitana de Barranquilla (Barranquilla y Soledad). Si el usuario menciona otra ciudad (Bogotá, Medellín, Cali, Santa Marta, Cartagena, etc.), responde amablemente que solo trabajas con Barranquilla y Soledad, y no llames la función.**
+5. Interpreta los datos que recibes:
+   - \`velocidad_actual_kmh\` vs \`velocidad_libre_kmh\`: compáralos para determinar cuánto tráfico hay.
+   - \`congestion_porcentaje\`: 0-25% = fluido, 25-50% = moderado, 50-75% = congestionado, 75-100% = muy congestionado.
+   - \`incidentes\`: si hay eventos, menciónalos con detalles (descripción, ubicación, demora estimada).
+6. Si hay incidentes, menciónalos con detalles y su demora estimada.
+7. Si no hay datos suficientes o la herramienta devuelve un error, sé honesto y sugiere intentar con otra dirección o revisar el mapa.
+8. Usa expresiones costeñas como: "¡papi!", "chévere", "bacano", "a la orden", "uve", "mi llave".
+9. Sé breve pero informativo: máximo 3 párrafos.`;
 
 async function geocodificarDireccion(direccion) {
-  const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(direccion + ', Barranquilla, Colombia')}.json?key=${process.env.TOMTOM_API_KEY}&limit=1`;
+  const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(direccion + ', Barranquilla, Colombia')}.json?key=${process.env.TOMTOM_API_KEY}&limit=1&countrySet=CO`;
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
@@ -77,7 +88,7 @@ async function geocodificarDireccion(direccion) {
 }
 
 async function consultarFlujoTrafico(lat, lon) {
-  const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/relative/10/json?key=${process.env.TOMTOM_API_KEY}&point=${lat},${lon}&unit=km/h&thickness=1`;
+  const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/relative/10/json?key=${process.env.TOMTOM_API_KEY}&point=${lat},${lon}&unit=KMPH&thickness=1`;
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
@@ -87,7 +98,7 @@ async function consultarFlujoTrafico(lat, lon) {
 }
 
 async function consultarIncidentes(lat, lon) {
-  const bbox = `${lon - 0.02},${lat - 0.02},${lon + 0.02},${lat + 0.02}`;
+  const bbox = `${lon - 0.04},${lat - 0.04},${lon + 0.04},${lat + 0.04}`;
   const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?key=${process.env.TOMTOM_API_KEY}&bbox=${bbox}&language=es-ES&timeValidityFilter=present`;
   const res = await fetch(url);
   if (!res.ok) {
@@ -97,11 +108,41 @@ async function consultarIncidentes(lat, lon) {
   return res.json();
 }
 
+function formatearDatosFlujo(traficoRaw) {
+  if (!traficoRaw?.flowSegmentData) return null;
+  const f = traficoRaw.flowSegmentData;
+  return {
+    velocidad_actual_kmh: f.currentSpeed,
+    velocidad_libre_kmh: f.freeFlowSpeed,
+    congestion_porcentaje: Math.round((1 - f.currentSpeed / f.freeFlowSpeed) * 100),
+    nivel_confianza: f.confidence,
+    tiempo_viaje_actual_seg: f.currentTravelTime,
+    tiempo_viaje_libre_seg: f.freeFlowTravelTime,
+  };
+}
+
+function formatearIncidentes(incidentesRaw) {
+  if (!incidentesRaw?.incidents?.length) return [];
+  return incidentesRaw.incidents.map(inc => ({
+    tipo: inc.properties.iconCategory,
+    gravedad: inc.properties.magnitudeOfDelay,
+    descripcion: inc.properties.events?.map(e => e.description).join('; ') || '',
+    desde: inc.properties.from,
+    hasta: inc.properties.to,
+    longitud_km: inc.properties.length,
+    demora_min: inc.properties.delay ? Math.round(inc.properties.delay / 60) : null,
+  }));
+}
+
 async function ejecutarConsultarTrafico(direccion_o_zona) {
   try {
     const posicion = await geocodificarDireccion(direccion_o_zona);
     if (!posicion) {
       return { error: `No se encontró "${direccion_o_zona}" en Barranquilla. ¿Puedes ser más específico?` };
+    }
+
+    if (!estaEnAreaMetropolitana(posicion.lat, posicion.lon)) {
+      return { error: `"${direccion_o_zona}" no está en el área metropolitana de Barranquilla o Soledad. Solo puedo consultar tráfico dentro de Barranquilla y Soledad, Colombia.` };
     }
 
     const [trafico, incidentes] = await Promise.all([
@@ -112,8 +153,8 @@ async function ejecutarConsultarTrafico(direccion_o_zona) {
     return {
       direccion_consultada: direccion_o_zona,
       coordenadas: { lat: posicion.lat, lon: posicion.lon },
-      trafico,
-      incidentes,
+      flujo: formatearDatosFlujo(trafico),
+      incidentes: formatearIncidentes(incidentes),
     };
   } catch (err) {
     console.error('Error en ejecutarConsultarTrafico:', err);
