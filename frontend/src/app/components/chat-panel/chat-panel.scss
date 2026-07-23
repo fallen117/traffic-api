@@ -52,7 +52,13 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
-.theme-toggle {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-toggle, .clear-chat-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -68,10 +74,25 @@
   flex-shrink: 0;
 }
 
-.theme-toggle:hover {
+.clear-chat-btn {
+  font-size: 13px;
+}
+
+.theme-toggle:hover, .clear-chat-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.15);
   color: white;
   border-color: rgba(255, 255, 255, 0.25);
+}
+
+.clear-chat-btn:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.2);
+  color: #ff6b6b;
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+.clear-chat-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .title-icon {
