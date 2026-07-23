@@ -37,9 +37,10 @@ export class ChatPanel {
   }
 
   clearChat(): void {
+    if (!confirm('¿Está seguro de limpiar el chat?')) return;
     this.chatService.clearChat();
     const el = this.textareaEl()?.nativeElement;
-    if (el) el.style.height = 'auto';
+    if (el) el.style.height = "auto";
   }
 
   private chatListRef = viewChild<ElementRef<HTMLDivElement>>('chatList');
