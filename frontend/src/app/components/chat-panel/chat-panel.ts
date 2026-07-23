@@ -36,6 +36,12 @@ export class ChatPanel {
     this.themeService.toggle();
   }
 
+  clearChat(): void {
+    this.chatService.clearChat();
+    const el = this.textareaEl()?.nativeElement;
+    if (el) el.style.height = 'auto';
+  }
+
   private chatListRef = viewChild<ElementRef<HTMLDivElement>>('chatList');
   private textareaEl = viewChild<ElementRef<HTMLTextAreaElement>>('inputTextarea');
 

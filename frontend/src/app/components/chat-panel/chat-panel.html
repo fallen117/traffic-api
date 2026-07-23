@@ -6,9 +6,14 @@
     </mat-card-title>
     <div class="header-bottom">
       <mat-card-subtitle>Tráfico en Barranquilla con IA</mat-card-subtitle>
-      <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Modo claro' : 'Modo oscuro'">
-        <i class="fa-solid" [class.fa-moon]="!isDarkMode()" [class.fa-sun]="isDarkMode()"></i>
-      </button>
+      <div class="header-actions">
+        <button class="clear-chat-btn" (click)="clearChat()" [disabled]="messages().length === 0" aria-label="Limpiar chat">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+        <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Modo claro' : 'Modo oscuro'">
+          <i class="fa-solid" [class.fa-moon]="!isDarkMode()" [class.fa-sun]="isDarkMode()"></i>
+        </button>
+      </div>
     </div>
   </mat-card-header>
 

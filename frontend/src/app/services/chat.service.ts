@@ -13,6 +13,9 @@ export interface Coordenadas {
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
+  private static readonly MSG_KEY = 'quillatraffic_chat_messages';
+  private static readonly LOC_KEY = 'quillatraffic_current_location';
+
   private apiUrl = isDevMode()
     ? 'http://localhost:3001/api/chat'
     : '/api/chat';
@@ -20,6 +23,48 @@ export class ChatService {
   messages = signal<ChatMessage[]>([]);
   isLoading = signal(false);
   currentLocation = signal<Coordenadas | null>(null);
+
+  constructor() {
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage(): void {
+    try {
+      const raw = localStorage.getItem(ChatService.MSG_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChatMessage[];
+        this.messages.set(parsed.map(m => ({ ...m, timestamp: new Date(m.timestamp) })));
+      }
+      const locRaw = localStorage.getItem(ChatService.LOC_KEY);
+      if (locRaw) {
+        this.currentLocation.set(JSON.parse(locRaw));
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  private persistMessages(): void {
+    try {
+      localStorage.setItem(ChatService.MSG_KEY, JSON.stringify(this.messages()));
+    } catch { /* ignore quota errors */ }
+  }
+
+  private persistLocation(): void {
+    try {
+      const loc = this.currentLocation();
+      if (loc) {
+        localStorage.setItem(ChatService.LOC_KEY, JSON.stringify(loc));
+      } else {
+        localStorage.removeItem(ChatService.LOC_KEY);
+      }
+    } catch { /* ignore */ }
+  }
+
+  clearChat(): void {
+    this.messages.set([]);
+    this.currentLocation.set(null);
+    localStorage.removeItem(ChatService.MSG_KEY);
+    localStorage.removeItem(ChatService.LOC_KEY);
+  }
 
   private get history() {
     return this.messages().map(m => ({
@@ -35,6 +80,7 @@ export class ChatService {
       timestamp: new Date(),
     };
     this.messages.update(msgs => [...msgs, userMsg]);
+    this.persistMessages();
     this.isLoading.set(true);
 
     try {
@@ -55,6 +101,7 @@ export class ChatService {
 
       if (data.coordenadas?.lat && data.coordenadas?.lon) {
         this.currentLocation.set(data.coordenadas);
+        this.persistLocation();
       }
 
       this.messages.update(msgs => [
@@ -65,6 +112,7 @@ export class ChatService {
           timestamp: new Date(),
         },
       ]);
+      this.persistMessages();
     } catch {
       this.messages.update(msgs => [
         ...msgs,
@@ -76,6 +124,7 @@ export class ChatService {
           timestamp: new Date(),
         },
       ]);
+      this.persistMessages();
     } finally {
       this.isLoading.set(false);
     }
